@@ -1,4 +1,4 @@
-<h1 align="center">sudo-summon-swarm</h1>
+<h1 align="center">SwarmLord</h1>
 
 <p align="center">
   <strong>"Root access for your cognitive workforce."</strong><br/>
@@ -21,7 +21,7 @@
 
 ## Executive Summary
 
-**sudo-summon-swarm** is an experimental autonomous orchestration platform designed to bridge the gap between **large language model (LLM) reasoning** and **real-world backend, infrastructure, and DevOps execution**.
+**Swarnlord** is an experimental autonomous orchestration platform designed to bridge the gap between **large language model (LLM) reasoning** and **real-world backend, infrastructure, and DevOps execution**.
 
 Unlike traditional coding assistants that act as passive text-generation tools, ARCHON functions as an **Agentic Control Plane**. It continuously observes system state, reasons about architecture and operational signals, and executes validated actions using a recursive **OODA Loop (Observe → Orient → Decide → Act)**.
 
