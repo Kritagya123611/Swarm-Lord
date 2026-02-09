@@ -31,7 +31,7 @@ ARCHON is built for **AI-native backend engineering**, not chat-based automation
 
 ## Architectural Philosophy
 
-ARCHON follows a **Hybrid Runtime Architecture** that strictly separates high-level cognition from low-level execution.
+SwarmLord follows a **Hybrid Runtime Architecture** that strictly separates high-level cognition from low-level execution.
 
 This design ensures:
 
@@ -126,7 +126,7 @@ The Cognitive Core is responsible for **thinking**, not **doing**.
 
 ### Interface
 
-sudo-summon-swarm exposes a **reactive Terminal User Interface (TUI)** built using **Ink (React for CLI)**:
+SwarmLord exposes a **reactive Terminal User Interface (TUI)** built using **Ink (React for CLI)**:
 
 - Live agent reasoning and decisions
 - Code diffs and execution previews
