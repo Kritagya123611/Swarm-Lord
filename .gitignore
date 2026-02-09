@@ -1,0 +1,9 @@
+# Node.js (Control Plane)
+node_modules/
+dist/
+.env
+
+# Go (Kinetic Layer)
+kinetic_layer/fs_tool
+kinetic_layer/fs_tool.exe
+*.log
