@@ -1,17 +1,13 @@
-// control_plane/ui/index.ts
+// control_plane/ui/index.tsx
 import React from 'react';
 import { render } from 'ink';
-import { App } from './ui/App';
+import { App } from './ui/App.js';
 
-// Export components for external use
-export { App } from './ui/App';
-export { CommandInput } from './ui/components/CommandInput';
-//export { LogBox } from './components/LogBox';
-//export { StatusBadge } from './components/StatusBadge';
+// Export components (optional, but fine)
+export { App } from './ui/App.js';
+export { CommandInput } from './ui/components/CommandInput.js';
+export { LogBox } from './ui/components/LogBox.js';
+export { StatusBadge } from './ui/components/StatusBadge.js';
 
-// Render the app if this is the main module
-
-  render(<App />);
-
-
-
+// Direct render (ESM-safe)
+render(<App />);

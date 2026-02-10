@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, Spacer } from 'ink';
 import { CommandInput } from '../ui/components/CommandInput';
-//import { LogBox } from '../components/LogBox';
-//import { StatusBadge } from '../components/StatusBadge/StatusBadge';
-//import { Dashboard } from '../screens/Dashboard';
-//import { ApprovalRequest } from '../screens/ApprovalRequest';
+import { LogBox } from '../ui/components/LogBox';
+import { StatusBadge } from '../ui/components/StatusBadge';
+import { Dashboard } from '../ui/screens/Dashboard';
+import { ApprovalRequest } from '../ui/screens/ApprovalRequest';
 
 export const App = () => {
   const [currentView, setCurrentView] = useState<'dashboard' | 'approval' | 'terminal'>('dashboard');
@@ -47,9 +47,27 @@ export const App = () => {
       borderColor="#00ff9d"
     >
       {/* Header */}
-      
+      <Box>
+        <Text color="#00ff9d" bold>┌─[</Text>
+        <Text color="#ffffff">root@swarm-lord</Text>
+        <Text color="#00ff9d">]─[</Text>
+        <Text color="#ffff00">~</Text>
+        <Text color="#00ff9d">]</Text>
+        <Spacer />
+        <StatusBadge status={systemStatus} />
+      </Box>
 
       {/* Main Content */}
+      <Box flexDirection="column" marginTop={1}>
+        {currentView === 'dashboard' && <Dashboard />}
+        {currentView === 'approval' && <ApprovalRequest />}
+        
+        {/* Logs Section */}
+        <LogBox logs={logs} />
+        
+        {/* Command Input */}
+        <CommandInput onCommand={handleCommand} />
+      </Box>
     </Box>
   );
 };

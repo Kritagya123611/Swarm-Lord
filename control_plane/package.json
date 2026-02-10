@@ -1,46 +1,33 @@
+
 {
-  "name": "swarmlord-control-plane",
-  "version": "0.1.0",
-  "description": "Terminal UI for SwarmLord AI Control Plane",
-  "private": true,
+  "name": "swarmlord-ui",
+  "version": "1.0.0",
   "type": "module",
-
+  "main": "src/index.tsx",
   "scripts": {
-    "dev": "tsx src/index.tsx",
-    "build": "esbuild src/index.tsx --bundle --format=esm --platform=node --target=node20 --outfile=dist/index.js",
-    "start": "node dist/index.js"
+    "start": "tsx src/index.tsx",
+    "dev": "tsx watch src/index.tsx",
+    "build": "tsc"
   },
-
   "dependencies": {
-    "ink": "6.6.0",
-    "ink-big-text": "^2.0.0",
-    "ink-gradient": "^4.0.0",
-    "ink-spinner": "^5.0.0",
-    "ink-text-input": "^6.0.0",
-
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-
-    "@langchain/core": "^0.2.0",
-    "@langchain/anthropic": "^0.1.0",
-    "@langchain/cohere": "^0.1.0",
-    "langchain": "^0.2.0",
-
-    "dotenv": "^16.4.5",
-    "zod": "^3.23.8"
+    "ink": "4.5.0",
+    "react": "18.2.0",
+    "ink-select-input": "4.2.1",
+    "ink-text-input": "5.0.0",
+    "ink-spinner": "4.0.3",
+    "ink-box": "2.1.1",
+    "ink-gradient": "2.0.0",
+    "ink-big-text": "4.1.0",
+    "ink-table": "4.2.1",
+    "ink-progress-bar": "2.0.1"
   },
-
   "devDependencies": {
-    "@types/node": "^20.11.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-
-    "typescript": "^5.3.3",
-    "tsx": "^4.7.0",
-    "esbuild": "^0.20.2"
-  },
-
-  "keywords": ["terminal", "tui", "ai", "control-plane"],
-  "author": "SwarmLord Team",
-  "license": "MIT"
+    "@types/react": "18.2.0",
+    "@types/node": "20.10.0",
+    "typescript": "5.3.0",
+    "tsx": "4.7.0",
+    "@types/ink-select-input": "4.0.2",
+    "@types/ink-text-input": "5.0.1"
+  }
 }
+
