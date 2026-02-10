@@ -2,32 +2,45 @@
   "name": "swarmlord-control-plane",
   "version": "0.1.0",
   "description": "Terminal UI for SwarmLord AI Control Plane",
-
+  "private": true,
   "type": "module",
-  "main": "dist/index.js",
 
   "scripts": {
     "dev": "tsx src/index.tsx",
-    "start": "node dist/index.js",
-    "build": "esbuild src/index.tsx --bundle --format=esm --platform=node --target=node18 --outfile=dist/index.js",
-    "test": "jest"
+    "build": "esbuild src/index.tsx --bundle --format=esm --platform=node --target=node20 --outfile=dist/index.js",
+    "start": "node dist/index.js"
   },
 
   "dependencies": {
-    "ink": "^4.5.0",
-    "react": "^18.2.0"
+    "ink": "^6.6.0",
+    "ink-big-text": "^2.0.0",
+    "ink-gradient": "^4.0.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+
+    "@langchain/core": "^0.2.0",
+    "@langchain/anthropic": "^0.1.0",
+    "@langchain/cohere": "^0.1.0",
+    "langchain": "^0.2.0",
+
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
   },
 
   "devDependencies": {
-    "@types/node": "^20.10.0",
+    "@types/node": "^20.11.0",
     "@types/react": "^18.2.0",
-    "typescript": "^5.3.0",
+    "@types/react-dom": "^18.2.0",
+
+    "typescript": "^5.3.3",
     "tsx": "^4.7.0",
-    "esbuild": "^0.20.0"
+    "esbuild": "^0.20.2"
   },
 
-  "keywords": ["terminal", "tui", "devops", "ai", "control-plane"],
+  "keywords": ["terminal", "tui", "ai", "control-plane"],
   "author": "SwarmLord Team",
   "license": "MIT"
 }
-
