@@ -1,78 +1,88 @@
-import {AgentState} from "./state";
+import { AgentState } from "./state";
+import { ChatCohere } from "@langchain/cohere";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import dotenv from "dotenv";
 
-//import { callFileSystem } from "../tools/fileSystem"; // Connects to your Go tool
+dotenv.config();
+
+// Initialize Cohere
+const model = new ChatCohere({
+  model: "command-r-08-2024", 
+  temperature: 0, 
+});
 
 // --- WORKER 1: THE PLANNER ---
-// Responsibilities: Look at the user goal -> Create a checklist.
 export const plannerNode = async (state: typeof AgentState.State) => {
-  console.log("[Planner] Analyzing request...");
-    const userGoal = state.userGoal || "";
-  // TODO: connect this to Claude API later.
-  // For now, we simulate a plan to test the loop.
-  const simulatedPlan = [
-    "list_files",   // Task 1: Check what files exist
-    "read_readme",  // Task 2: Read the documentation
-    "finish"        // Task 3: Stop
+  console.log("[Planner] Asking Cohere to generate a plan...");
+  const userGoal = state.userGoal;
+  const systemPrompt = `
+You are a Senior Software Engineer.
+Your job is to break down a user's request into a list of executable steps.
+
+You can ONLY use these tools:
+- "list_files": Scans the directory.
+- "read_file <filename>": Reads a specific file (e.g., "read_file README.md").
+- "finish": Ends the mission.
+
+IMPORTANT: Return ONLY a raw JSON array of strings. Do not write markdown.
+Example: ["list_files", "read_file server.ts", "finish"]
+`;
+
+  const messages = [
+    new SystemMessage(systemPrompt),
+    new HumanMessage(userGoal),
   ];
 
-  if(userGoal.includes("bugs")){
-    return{
-        //returning only readfile and finish
-        plan: ["read_file", "finish"],
-        logs: ["Planner: Created a plan to find bugs in the codebase."]
-    }
-  }else if(userGoal.includes("list")){
-    return{
-        plan: ["list_files", "finish"],
-        logs: ["Planner: Created a plan to list all files in the codebase."]
-    }
-  }else{
-    return{
-        plan:[
-            "read_file",
-            "list_files",
-            "finish"
-        ]
-    }
+  // Ask Cohere
+  const response = await model.invoke(messages);
+  const aiOutput = response.content as string;
+  
+  console.log("Cohere says:", aiOutput);
+  const cleanJson = aiOutput.replace(/```json|```/g, "").trim();
+
+  let generatedPlan: string[] = [];
+  try {
+    generatedPlan = JSON.parse(cleanJson);
+  } catch (e) {
+    console.error("Failed to parse AI plan. Falling back to default.");
+    generatedPlan = ["list_files", "finish"]; 
   }
+
+  return {
+    plan: generatedPlan,
+    logs: [`Planner: Generated plan via Cohere: ${JSON.stringify(generatedPlan)}`]
+  };
 };
 
 // --- WORKER 2: THE EXECUTOR ---
-// Responsibilities: Take the first task -> Run the correct Go tool.
 export const executorNode = async (state: typeof AgentState.State) => {
-  // 1. Get the current task
-  const currentTask = state.plan[0];
-  console.log(`[Executor] Processing task: ${currentTask}`);
+  const currentTaskString = state.plan[0]; 
+  console.log(`[Executor] Processing task: ${currentTaskString}`);
+  const [command, ...args] = currentTaskString.split(" ");
+  const argument = args.join(" ");
 
   let result = "";
 
-  // 2. Route the task to the correct Tool (The Muscle)
+  // 2. EXECUTE (Simulated for now)
   try {
-    if (currentTask === "list_files") {
-       // Make sure to uncomment this when ready!
-       // result = await callFileSystem({ tool: "list_files", path: "." });
-       result = "Simulated: Listing files..."; 
+    if (command === "list_files") {
+       result = "Simulated: Listing files (src, package.json, README.md)...";
 
-    } else if (currentTask === "read_file") {  // <--- CHANGED FROM "read_readme"
-       
-       // For this simple test, let's just read the README whenever "read_file" is asked
-       // result = await callFileSystem({ tool: "read_file", path: "README.md" });
-       result = "Simulated: Reading README.md...";
+    } else if (command === "read_file") {
+       result = `Simulated: Reading contents of ${argument}...`;
 
-    } else if (currentTask === "finish") {
-      result = "Mission Accomplished.";
+    } else if (command === "finish") {
+       result = "Mission Accomplished.";
     } else {
-      result = "Error: Unknown task type.";
+       result = `Error: Unknown command '${command}'`;
     }
   } catch (error: any) {
-    result = `Tool Error: ${error.message || error}`;
+    result = `Tool Error: ${error.message}`;
   }
 
-  // 3. Update the Clipboard (State)
-  // We remove the current task from the plan so we don't do it twice.
   return {
     lastToolResult: result,
-    logs: [`Executor: Ran '${currentTask}'`, `Output: ${result.substring(0, 50)}...`], // Log first 50 chars
-    plan: state.plan.slice(1) // CRITICAL: Remove the top item from the list
+    logs: [`Executor: Ran '${command}' on '${argument}'`, `Output: ${result.substring(0, 50)}...`],
+    plan: state.plan.slice(1)
   };
 };
