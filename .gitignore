@@ -6,4 +6,4 @@ dist/
 # Go (Kinetic Layer)
 kinetic_layer/fs_tool
 kinetic_layer/fs_tool.exe
-*.log
+*.log 
