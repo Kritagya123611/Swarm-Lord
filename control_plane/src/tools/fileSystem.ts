@@ -1,33 +1,43 @@
-const virtualDisk = new Map<string, string>();
+import fs from 'fs/promises';
+import path from 'path';
 
-virtualDisk.set("README.md", "# SwarmLord\nA cool AI project.");
-virtualDisk.set("package.json", "{ \"name\": \"swarmlord\" }");
+const WORKSPACE_DIR = path.resolve(process.cwd(), "workspace");
+
+const ensureWorkspace = async () => {
+  try {
+    await fs.mkdir(WORKSPACE_DIR, { recursive: true });
+  } catch (e) {
+  }
+};
 
 interface FileSystemArgs {
-  tool: 'list_files' | 'read_file' | 'write_file'; 
+  tool: 'list_files' | 'read_file' | 'write_file';
   path: string;
-  content?: string; 
+  content?: string;
 }
 
 export const callFileSystem = async (args: FileSystemArgs): Promise<string> => {
-  console.log(`[MOCK] Calling Tool: ${args.tool} on ${args.path}`);
-  await new Promise(resolve => setTimeout(resolve, 800)); // Simulate delay
-
-  if (args.tool === 'list_files') {
-    const files = Array.from(virtualDisk.keys()).map(f => `[FILE] ${f}`);
-    return files.join("\n");
+  await ensureWorkspace();
+  const safePath = path.join(WORKSPACE_DIR, args.path);
+  console.log(`[REAL-FS] Executing ${args.tool} on ${safePath}`);
+  try {
+    if (args.tool === 'list_files') {
+      const files = await fs.readdir(WORKSPACE_DIR);
+      return files.length > 0 
+        ? files.map(f => `[FILE] ${f}`).join("\n")
+        : "Directory is empty.";
+    }
+    if (args.tool === 'read_file') {
+      const content = await fs.readFile(safePath, 'utf-8');
+      return content;
+    }
+    if (args.tool === 'write_file') {
+      if (!args.content) return "Error: No content provided.";
+      await fs.writeFile(safePath, args.content, 'utf-8');
+      return `Success: Wrote to ${args.path}`;
+    }
+    return "Error: Unknown command.";
+  } catch (error: any) {
+    return `FileSystem Error: ${error.message}`;
   }
-
-  if (args.tool === 'read_file') {
-    const content = virtualDisk.get(args.path);
-    return content || "Error: File not found.";
-  }
-
-  if (args.tool === 'write_file') {
-    if (!args.content) return "Error: No content provided.";
-    virtualDisk.set(args.path, args.content);
-    return `Success: Created file '${args.path}'`;
-  }
-
-  return "Error: Unknown mock command.";
 };
