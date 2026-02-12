@@ -16,6 +16,10 @@
   <strong>The Autonomous Orchestration Plane for Backend Engineering</strong>
 </p>
 
+<p align="center">
+  <strong>✨ Special Thanks to Shreya Baranwal ✨</strong>
+</p>
+
 ---
 
 
