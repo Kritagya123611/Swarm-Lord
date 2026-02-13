@@ -1,14 +1,17 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { AgentState } from "./state";
-import { plannerNode, executorNode } from "./nodes";
+import { plannerNode, executorNode, approvalNode } from "./nodes"; 
 
 function shouldContinue(state: typeof AgentState.State) {
-  if (!state.plan || state.plan.length === 0) {
+  if (!state.plan || state.plan.length === 0) return "end";
+  if (state.plan[0] === "finish") return "end";
+  return "executor";
+}
+
+function checkSafety(state: typeof AgentState.State) {
+  const lastLog = state.logs[state.logs.length - 1];
+  if (lastLog && lastLog.includes("PAUSED")) {
     return "end"; 
-  }
-  const nextStep = state.plan[0];
-  if (nextStep === "finish") {
-    return "end";
   }
   return "executor";
 }
@@ -16,9 +19,14 @@ function shouldContinue(state: typeof AgentState.State) {
 export const createBrain = () => {
   const builder = new StateGraph(AgentState)
     .addNode("planner", plannerNode)
+    .addNode("gatekeeper", approvalNode) 
     .addNode("executor", executorNode)
     .addEdge(START, "planner")
-    .addEdge("planner", "executor")
+    .addEdge("planner", "gatekeeper")
+    .addConditionalEdges("gatekeeper", checkSafety, {
+      executor: "executor",
+      end: END
+    })
     .addConditionalEdges("executor", shouldContinue, {
       executor: "executor",
       end: END

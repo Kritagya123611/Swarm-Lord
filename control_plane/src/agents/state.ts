@@ -10,5 +10,6 @@ export const AgentState = Annotation.Root({
   }),
 
   lastToolResult: Annotation<string>,
+  approved: Annotation<boolean>()
 });
 

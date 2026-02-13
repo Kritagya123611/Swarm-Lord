@@ -57,6 +57,31 @@ Example: ["write_file app.ts console.log('hi')", "run_git add .", "run_git commi
   };
 };
 
+//making a new node because we want that before taking any actions which are dangerous 
+//and require human approval we want to get the plan and show it to the user and ask 
+// for approval before executing it
+//The plan:
+//1. Get the plan from the planner node
+//2. Judge the plan wether it is safe to execute or not
+//3. If it is safe then approve it and move to the executor node
+//4. If it is not safe then reject it or take human approval and end or execute the process
+// --- WORKER 3: THE GATEKEEPER ---
+export const approvalNode = async (state: typeof AgentState.State) => {
+  console.log("[Gatekeeper] Checking plan safety...");
+  
+  const plan = state.plan;
+  const isDangerous = plan.some(task => task.startsWith("write_file") || task.startsWith("run_git"));
+  if (isDangerous && !state.approved) {
+    console.log("STOP: Plan requires human approval.");
+    return {
+      logs: ["PAUSED: Plan requires approval. Send request again with { approved: true }"]
+    };
+  }
+  return {
+    logs: ["Plan approved or safe. Proceeding."]
+  };
+};
+
 // --- WORKER 2: THE EXECUTOR ---
 export const executorNode = async (state: typeof AgentState.State) => {
   const currentTaskString = state.plan[0]; 
