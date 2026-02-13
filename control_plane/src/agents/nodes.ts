@@ -3,6 +3,7 @@ import { ChatCohere } from "@langchain/cohere";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import dotenv from "dotenv";
 import { callFileSystem } from "../tools/fileSystem";
+import { callGit } from "../tools/gitTools";
 
 dotenv.config();
 
@@ -17,17 +18,18 @@ export const plannerNode = async (state: typeof AgentState.State) => {
   console.log("[Planner] Asking Cohere to generate a plan...");
   const userGoal = state.userGoal;
   const systemPrompt = `
-You are a Senior Software Engineer.
-Your job is to break down a user's request into a list of executable steps.
+You are a Senior DevOps Engineer.
+Your job is to break down a user's request into executable steps.
 
 You can ONLY use these tools:
 - "list_files": Scans the directory.
-- "read_file <filename>": Reads a specific file.
-- "write_file <filename> <content>": Creates or updates a file. (Example: "write_file test.txt hello world")
+- "read_file <filename>": Reads a file.
+- "write_file <filename> <content>": Creates/updates a file.
+- "run_git <command>": Runs a git command. (Example: "run_git init", "run_git add .", "run_git commit -m 'msg'")
 - "finish": Ends the mission.
 
-IMPORTANT: Return ONLY a raw JSON array of strings.
-Example: ["list_files", "write_file test.txt hello world", "finish"]
+IMPORTANT: Return ONLY a raw JSON array.
+Example: ["write_file app.ts console.log('hi')", "run_git add .", "run_git commit -m 'feat: add app'", "finish"]
 `;
   const messages = [
     new SystemMessage(systemPrompt),
@@ -84,6 +86,11 @@ export const executorNode = async (state: typeof AgentState.State) => {
          path: filename, 
          content: content 
        });
+    }
+    //for git related commands such as init,add,commit etc
+    else if(command==="run_git"){
+        const gitCommand = parts.slice(1).join(" ");
+        result = await callGit(gitCommand);
     } else if (command === "finish") {
        result = "Mission Accomplished.";
     } else {
