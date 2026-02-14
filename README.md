@@ -25,7 +25,7 @@
 
 Unlike traditional coding assistants that act as passive text-generation tools, ARCHON functions as an **Agentic Control Plane**. It continuously observes system state, reasons about architecture and operational signals, and executes validated actions using a recursive **OODA Loop (Observe → Orient → Decide → Act)**.
 
-ARCHON is built for **AI-native backend engineering**, not chat-based automation.
+Built for **AI-native backend engineering**, not chat-based automation.
 
 ---
 
