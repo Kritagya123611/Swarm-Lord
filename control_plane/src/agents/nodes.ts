@@ -131,3 +131,10 @@ export const executorNode = async (state: typeof AgentState.State) => {
     plan: state.plan.slice(1)
   };
 };
+
+// --- WORKER 4: THE REVIEWER ---
+// This is the AI orchestrator that reviews the results and decides whether to 
+// continue or not based on the last tool result and the logs.
+export const reviewerNode=async (state: typeof AgentState.State) => {
+  console.log("[Reviewer] Reviewing last tool result and logs...");
+}
