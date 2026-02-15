@@ -15,45 +15,52 @@ const model = new ChatCohere({
 
 // --- WORKER 1: THE PLANNER ---
 export const plannerNode = async (state: typeof AgentState.State) => {
-  console.log("[Planner] Asking Cohere to generate a plan...");
+  console.log("[Planner] Analysing request & history...");
   const userGoal = state.userGoal;
+  const recentLogs = state.logs.slice(-3).join("\n"); 
   const systemPrompt = `
-You are a Senior DevOps Engineer.
-Your job is to break down a user's request into executable steps.
+    You are a Senior Software Engineer.
+    
+    GOAL: ${userGoal}
+    
+    HISTORY (What happened so far):
+    ${recentLogs}
+    
+    INSTRUCTIONS:
+    - If the history shows a "QA Rejected" error, you MUST generate a NEW plan to fix it.
+    - Do not just retry the same failed step. Change the code.
+    
+    TOOLS:
+    - "list_files"
+    - "read_file <filename>"
+    - "write_file <filename> <content>"
+    - "run_git <command>"
+    - "finish"
 
-You can ONLY use these tools:
-- "list_files": Scans the directory.
-- "read_file <filename>": Reads a file.
-- "write_file <filename> <content>": Creates/updates a file.
-- "run_git <command>": Runs a git command. (Example: "run_git init", "run_git add .", "run_git commit -m 'msg'")
-- "finish": Ends the mission.
+    Output a raw JSON array of strings.
+  `;
 
-IMPORTANT: Return ONLY a raw JSON array.
-Example: ["write_file app.ts console.log('hi')", "run_git add .", "run_git commit -m 'feat: add app'", "finish"]
-`;
   const messages = [
     new SystemMessage(systemPrompt),
-    new HumanMessage(userGoal),
+    new HumanMessage("Generate the next steps."),
   ];
 
   // Ask Cohere
   const response = await model.invoke(messages);
   const aiOutput = response.content as string;
   
-  console.log("Cohere says:", aiOutput);
+  // Clean JSON
   const cleanJson = aiOutput.replace(/```json|```/g, "").trim();
-
   let generatedPlan: string[] = [];
   try {
     generatedPlan = JSON.parse(cleanJson);
   } catch (e) {
-    console.error("Failed to parse AI plan. Falling back to default.");
-    generatedPlan = ["list_files", "finish"]; 
+    generatedPlan = ["finish"];
   }
 
   return {
     plan: generatedPlan,
-    logs: [`Planner: Generated plan via Cohere: ${JSON.stringify(generatedPlan)}`]
+    logs: [`Planner: Updated plan based on feedback.`]
   };
 };
 
@@ -89,7 +96,7 @@ export const executorNode = async (state: typeof AgentState.State) => {
   const parts = currentTaskString.split(" ");
   const command = parts[0];
   const filename = parts[1]; 
-  const content = parts.slice(2).join(" "); 
+  let content = parts.slice(2).join(" "); 
 
   let result = "";
   try {
@@ -106,11 +113,8 @@ export const executorNode = async (state: typeof AgentState.State) => {
        });
 
     } else if (command === "write_file") {
-       result = await callFileSystem({ 
-         tool: "write_file", 
-         path: filename, 
-         content: content 
-       });
+        await callFileSystem({ tool: "write_file", path: filename, content: content });
+        result = `\n[ACTION] Wrote to ${filename}\n[CONTENT PREVIEW]\n${content}`;
     }
     //for git related commands such as init,add,commit etc
     else if(command==="run_git"){
@@ -135,6 +139,42 @@ export const executorNode = async (state: typeof AgentState.State) => {
 // --- WORKER 4: THE REVIEWER ---
 // This is the AI orchestrator that reviews the results and decides whether to 
 // continue or not based on the last tool result and the logs.
-export const reviewerNode=async (state: typeof AgentState.State) => {
-  console.log("[Reviewer] Reviewing last tool result and logs...");
-}
+// Steps for clarity:
+// 1. Load the last tool result and the original user goal.(Langraph)
+// 2. Decide if the plan is on track or if adjustments are needed by asking the Cohere.
+// 3. If adjustments are needed, modify the plan or request human input.
+// 4. If on track, approve the next step in the plan.
+export const reviewerNode = async (state: typeof AgentState.State) => {
+  console.log("[Reviewer] Checking the work...");
+  
+  const lastResult = state.lastToolResult;
+  const originalGoal = state.userGoal;
+
+  const systemPrompt = `
+    You are a Senior QA Engineer.
+    Goal: "${originalGoal}"
+    Result: "${lastResult}"
+
+    Does this result fully solve the goal?
+    If YES, respond "APPROVED".
+    If NO, explain clearly why it failed and what code is missing.
+  `;
+
+  const response = await model.invoke([new SystemMessage(systemPrompt)]);
+  const feedback = response.content as string;
+
+  console.log(`Reviewer says: ${feedback}`);
+
+  if (feedback.includes("APPROVED")) {
+    console.log("this was the output : ", lastResult);
+    return { 
+      logs: ["QA Approved. Mission Complete."],
+      plan: ["finish"]
+    };
+  } else {
+    return {
+      logs: [`QA Rejected: ${feedback}`], 
+      plan: [] 
+    };
+  }
+};
