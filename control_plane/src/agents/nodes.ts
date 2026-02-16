@@ -207,3 +207,27 @@ export const reviewerNode = async (state: typeof AgentState.State) => {
     };
   }
 };
+
+// Next Goal:
+// There would be a central manager which would decide how many and which ai agents 
+// to use for a specific task and would also be responsible for the communication 
+// between the agents and the tools and the user. It would also be responsible for 
+// the overall orchestration of the process and would be the main entry point for 
+// the user to interact with the system.
+/*
+1) The CEO (Manager): Takes your big goal and breaks it into small tasks. 
+It assigns each task to a specific Specialist (e.g., "Researcher", "Coder", "Writer").
+
+2) The Task Queue: A shared list of work to be done.
+
+3) The Worker (Shapeshifter): A single node that dynamically changes its personality 
+based on the task. If the CEO assigns a task to "Security Engineer," this node 
+becomes a Security Engineer for that turn.
+
+Architecture:
+User input -> break the complex goal into small tasks -> push tasks into a queue 
+-> Worker node pulls a task -> updates the current task and changes its role/personality 
+based on the task -> executes the task -> logs the result -> 
+CEO reviews the logs and assigns the next task.
+*/
+
