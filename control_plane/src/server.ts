@@ -15,7 +15,7 @@ app.post("/summon", async (req, res) => {
         lastToolResult: "",
         approved: approved || false 
     };
-    const finalState = await brain.invoke(initialState);
+    const finalState = await brain.invoke(initialState, { recursionLimit: 100 });
     res.json({
         message: "Goal processed.",
         success: true,

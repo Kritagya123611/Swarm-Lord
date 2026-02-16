@@ -114,15 +114,12 @@ export const approvalNode = async (state: typeof AgentState.State) => {
 
 // --- WORKER 2: THE EXECUTOR ---
 export const executorNode = async (state: typeof AgentState.State) => {
-  const currentTaskString = state.plan[0]; 
-  if (typeof currentTaskString !== 'string') {
-      return {
-          logs: [`Executor Error: Invalid task format. Expected string, got ${typeof currentTaskString}. Skipping.`],
-          plan: state.plan.slice(1) 
-      };
-  }
-  console.log(`[Executor] Processing task: ${currentTaskString}`);
-  const parts = currentTaskString.split(" ");
+const task = state.currentTask;
+  if (!task) return { logs: ["Worker: No task!"] };
+
+  console.log(`[Executor] Processing task: ${task}`);
+  const taskString = typeof task === 'string' ? task : task.toString();
+  const parts = taskString.split(" ");
   const command = parts[0];
   const filename = parts[1]; 
   let content = parts.slice(2).join(" "); 
@@ -159,9 +156,7 @@ export const executorNode = async (state: typeof AgentState.State) => {
   }
 
   return {
-    lastToolResult: result,
-    logs: [`Executor: Ran '${command}' on '${filename}'`, `Output: ${result.substring(0, 50)}...`],
-    plan: state.plan.slice(1)
+    logs: [`Worker: Finished ${task}`] 
   };
 };
 
@@ -231,3 +226,68 @@ based on the task -> executes the task -> logs the result ->
 CEO reviews the logs and assigns the next task.
 */
 
+// --- WORKER 1: THE ARCHITECT (Breaks Goal into Tasks) ---
+export const architectNode = async (state: typeof AgentState.State) => {
+  const userGoal = state.userGoal;
+  console.log(`[Architect] Breaking down: "${userGoal}"`);
+
+  const systemPrompt = `
+    You are a Technical Lead.
+    GOAL: "${userGoal}"
+
+    Break this goal into 3-5 EXECUTABLE CODING TASKS.
+    - Each task must be a clear, single-step coding instruction.
+    - Start with "Create <filename>" or "Write <filename>".
+    - JSON Array of strings ONLY.
+
+    Example: ["Create package.json", "Create server.js", "Create index.html"]
+  `;
+
+  const response = await model.invoke([new SystemMessage(systemPrompt)]);
+  const aiOutput = response.content as string;
+  
+  // 🧹 SANITIZER: Robust JSON Parsing
+  let tasks: string[] = [];
+  try {
+    const jsonMatch = aiOutput.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+        tasks = JSON.parse(jsonMatch[0]);
+    } else {
+        // Fallback if AI fails
+        tasks = [userGoal]; 
+    }
+  } catch (e) {
+    console.error("Architect parsing failed. Defaulting to single task.");
+    tasks = [userGoal];
+  }
+
+  return {
+    taskQueue: tasks, 
+    logs: [`Architect: Created ${tasks.length} tasks.`]
+  };
+};
+
+// --- WORKER 2: THE MANAGER (Assigns Work) ---
+export const managerNode = async (state: typeof AgentState.State) => {
+  const queue = state.taskQueue || [];
+
+  // 1. Check if done
+  if (queue.length === 0) {
+      console.log("[Manager] Queue empty. All done.");
+      return { 
+          currentTask: null // Signal to Graph to STOP
+      }; 
+  }
+
+  // 2. Pop the next task
+  const nextTask = queue[0];
+  const remainingQueue = queue.slice(1);
+
+  console.log(`[Manager] Popped task: "${nextTask}"`);
+
+  return {
+    currentTask: nextTask,
+    taskQueue: remainingQueue,
+    logs: [`Manager: Assigning "${nextTask}" to Worker...`]
+  };
+};
