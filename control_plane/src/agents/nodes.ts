@@ -16,54 +16,67 @@ const model = new ChatCohere({
 // --- WORKER 1: THE PLANNER ---
 export const plannerNode = async (state: typeof AgentState.State) => {
   console.log("[Planner] Analysing request & history...");
+
   const userGoal = state.userGoal;
   const recentLogs = state.logs.slice(-3).join("\n"); 
+  
   const systemPrompt = `
     You are a Senior Software Engineer.
-    
     GOAL: ${userGoal}
     
-    HISTORY (What happened so far):
+    HISTORY:
     ${recentLogs}
     
-    INSTRUCTIONS:
-    - If the history shows a "QA Rejected" error, you MUST generate a NEW plan to fix it.
-    - Do not just retry the same failed step. Change the code.
-    
+    CRITICAL INSTRUCTIONS:
+    1. You must ONLY output a raw JSON array of strings.
+    2. Use DOUBLE QUOTES (") for the JSON. Do not use single quotes.
+    3. Do NOT wrap the code in markdown blocks (like \`\`\`json). Just the raw array.
+    4. Format: ["command arg1 arg2", "command2 arg"]
+
     TOOLS:
     - "list_files"
     - "read_file <filename>"
-    - "write_file <filename> <content>"
-    - "run_git <command>"
+    - "write_file <filename> <content>" (Content must be escaped properly for JSON)
+    - "run_command <cmd>"
     - "finish"
-
-    Output a raw JSON array of strings.
   `;
 
   const messages = [
     new SystemMessage(systemPrompt),
-    new HumanMessage("Generate the next steps."),
+    new HumanMessage("Generate the next steps. JSON ONLY."),
   ];
-
-  // Ask Cohere
   const response = await model.invoke(messages);
-  const aiOutput = response.content as string;
-  
-  // Clean JSON
-  const cleanJson = aiOutput.replace(/```json|```/g, "").trim();
+  let aiOutput = response.content as string;
+  console.log(`[RAW AI OUTPUT]:\n${aiOutput}`);
+
   let generatedPlan: string[] = [];
   try {
-    generatedPlan = JSON.parse(cleanJson);
-  } catch (e) {
-    generatedPlan = ["finish"];
-  }
+    aiOutput = aiOutput.replace(/```json/g, "").replace(/```/g, "").trim();
+    const startIndex = aiOutput.indexOf("[");
+    const endIndex = aiOutput.lastIndexOf("]");
+    
+    if (startIndex !== -1 && endIndex !== -1) {
+        let jsonString = aiOutput.substring(startIndex, endIndex + 1);
+        generatedPlan = JSON.parse(jsonString);
+    } else {
+        throw new Error("No JSON brackets found");
+    }
+    generatedPlan = generatedPlan.map((item: any) => {
+        if (typeof item === 'object') {
+            return `${item.tool || item.command || "finish"} ${item.args || item.content || ""}`;
+        }
+        return String(item);
+    });
 
+  } catch (e) {
+    console.error(`Planner parsing failed: ${(e as Error).message}`);
+    generatedPlan = ["list_files"]; 
+  }
   return {
     plan: generatedPlan,
-    logs: [`Planner: Updated plan based on feedback.`]
+    logs: [`Planner: New plan -> ${JSON.stringify(generatedPlan)}`]
   };
 };
-
 //making a new node because we want that before taking any actions which are dangerous 
 //and require human approval we want to get the plan and show it to the user and ask 
 // for approval before executing it
@@ -72,18 +85,28 @@ export const plannerNode = async (state: typeof AgentState.State) => {
 //2. Judge the plan wether it is safe to execute or not
 //3. If it is safe then approve it and move to the executor node
 //4. If it is not safe then reject it or take human approval and end or execute the process
-// --- WORKER 3: THE GATEKEEPER ---
+// --- WORKER 3: THE GATEKEEPER --- This node checks the plan for any dangerous commands and requires approval if found.
 export const approvalNode = async (state: typeof AgentState.State) => {
   console.log("[Gatekeeper] Checking plan safety...");
-  
   const plan = state.plan;
-  const isDangerous = plan.some(task => task.startsWith("write_file") || task.startsWith("run_git"));
+  const validTasks = plan.filter(task => typeof task === 'string');
+  
+  if (validTasks.length !== plan.length) {
+      console.warn("Warning: Planner generated invalid tasks (objects/nulls). Ignoring them.");
+  }
+
+  const isDangerous = validTasks.some(task => 
+      task.startsWith("write_file") || 
+      task.startsWith("run_git") || 
+      task.startsWith("run_command")
+  );
+
   if (isDangerous && !state.approved) {
-    console.log("STOP: Plan requires human approval.");
     return {
       logs: ["PAUSED: Plan requires approval. Send request again with { approved: true }"]
     };
   }
+
   return {
     logs: ["Plan approved or safe. Proceeding."]
   };
@@ -92,6 +115,12 @@ export const approvalNode = async (state: typeof AgentState.State) => {
 // --- WORKER 2: THE EXECUTOR ---
 export const executorNode = async (state: typeof AgentState.State) => {
   const currentTaskString = state.plan[0]; 
+  if (typeof currentTaskString !== 'string') {
+      return {
+          logs: [`Executor Error: Invalid task format. Expected string, got ${typeof currentTaskString}. Skipping.`],
+          plan: state.plan.slice(1) 
+      };
+  }
   console.log(`[Executor] Processing task: ${currentTaskString}`);
   const parts = currentTaskString.split(" ");
   const command = parts[0];
