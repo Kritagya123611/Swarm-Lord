@@ -291,3 +291,78 @@ export const managerNode = async (state: typeof AgentState.State) => {
     logs: [`Manager: Assigning "${nextTask}" to Worker...`]
   };
 };
+
+// --- WORKER 3: THE SMART WORKER (Writes Code + Shares Context) ---
+export const workerNode = async (state: typeof AgentState.State) => {
+  const task = state.currentTask;
+  if (!task) return { logs: ["Worker: No task assigned."] };
+
+  console.log(`[Worker] Working on: "${task}"...`);
+
+  // STEP A: Ask AI to write the code
+  const systemPrompt = `
+    You are a Senior Developer.
+    TASK: "${task}"
+    
+    // THE HIVE MIND: What other agents have built so far
+    PREVIOUS CONTEXT:
+    ${state.sharedContext || "Nothing yet. You are the first worker."}
+    
+    Write the code to complete your task.
+    Make sure your code connects properly to the files and functions mentioned in the PREVIOUS CONTEXT.
+    
+    Return a JSON Array of commands to execute.
+    
+    TOOLS:
+    - "write_file <filename> <content>"
+    
+    Example: ["write_file index.js console.log('hi')"]
+  `;
+
+  // 1. Call the AI
+  const response = await model.invoke([new SystemMessage(systemPrompt)]);
+  const aiOutput = response.content as string;
+
+  // 2. Parse commands
+  let commands: string[] = [];
+  try {
+      const jsonMatch = aiOutput.match(/\[[\s\S]*\]/);
+      if (jsonMatch) commands = JSON.parse(jsonMatch[0]);
+  } catch (e) {
+      console.error("Worker parsing failed.");
+  }
+
+  // 3. Execute commands immediately
+  const executionLogs = [];
+  for (const cmdString of commands) {
+      if (typeof cmdString !== 'string') continue;
+
+      const firstSpace = cmdString.indexOf(" ");
+      const command = firstSpace === -1 ? cmdString : cmdString.slice(0, firstSpace);
+      const args = firstSpace === -1 ? "" : cmdString.slice(firstSpace + 1);
+
+      try {
+        if (command === "write_file") {
+            const [file, ...rest] = args.split(" ");
+            const content = rest.join(" ");
+            await callFileSystem({ tool: "write_file", path: file, content });
+            executionLogs.push(`[Worker] Wrote ${file}`);
+        } 
+      } catch (err: any) {
+          executionLogs.push(`[Worker] Error: ${err.message}`);
+      }
+  }
+
+  // 4. LEAVE A NOTE FOR THE NEXT AGENT
+  const filesWritten = executionLogs
+    .filter(log => log.includes("Wrote"))
+    .join(", ");
+    
+  // Summarize what this worker did
+  const contextUpdate = `[Task: ${task}] -> ${filesWritten || "No files written."}`;
+
+  return {
+    logs: [`Worker finished: ${task}`, ...executionLogs],
+    sharedContext: contextUpdate // Appends to the Hive Mind memory
+  };
+};

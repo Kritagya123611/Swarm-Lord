@@ -1,6 +1,6 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { AgentState } from "./state";
-import { plannerNode, executorNode, approvalNode, reviewerNode,managerNode,architectNode} from "./nodes"; 
+import { plannerNode, executorNode, approvalNode, reviewerNode,workerNode,managerNode,architectNode} from "./nodes"; 
 
 function shouldContinue(state: typeof AgentState.State) {
   if (!state.plan || state.plan.length === 0) return "end";
@@ -20,7 +20,7 @@ export const createBrain = () => {
   const workflow = new StateGraph(AgentState)
     .addNode("architect", architectNode)
     .addNode("manager", managerNode)
-    .addNode("worker", executorNode)
+    .addNode("worker", workerNode)
 
     // 1. Start -> Architect (Build the Queue)
     .addEdge(START, "architect")

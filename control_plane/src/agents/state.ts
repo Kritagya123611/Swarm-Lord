@@ -22,6 +22,14 @@ export const AgentState = Annotation.Root({
     reducer: (x, y) => x.concat(y),
   }),
 
+sharedContext: Annotation<string>({
+    reducer: (current, update) => {
+      if (!update) return current;
+      return current ? `${current}\n${update}` : update;
+    },
+    default: () => "",
+  }),
+
   plan: Annotation<string[]>(), 
   lastToolResult: Annotation<string>(),
   approved: Annotation<boolean>(),
